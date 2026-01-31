@@ -8,10 +8,15 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute'
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
+const OnboardingPage = lazy(() => import('@/pages/onboarding/OnboardingPage'))
 const WMTIPage = lazy(() => import('@/pages/wmti/WMTIPage'))
-const ProductsPage = lazy(() => import('@/pages/products/ProductsPage'))
-const ProductDetailPage = lazy(() => import('@/pages/products/ProductDetailPage'))
+const StockDetailPage = lazy(() => import('@/pages/stock/StockDetailPage'))
+const SearchPage = lazy(() => import('@/pages/search/SearchPage'))
+const TradePage = lazy(() => import('@/pages/trade/TradePage'))
+const PortfolioPage = lazy(() => import('@/pages/portfolio/PortfolioPage'))
 const MyPage = lazy(() => import('@/pages/mypage/MyPage'))
+const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'))
+const RewardsPage = lazy(() => import('@/pages/rewards/RewardsPage'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 function App() {
@@ -20,19 +25,24 @@ function App() {
       <Suspense fallback={<LoadingSpinner fullScreen />}>
         <Routes>
           {/* Public routes */}
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Routes with Layout */}
           <Route element={<Layout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/stock/:code" element={<StockDetailPage />} />
+            <Route path="/trade/:code" element={<TradePage />} />
             <Route path="/wmti" element={<WMTIPage />} />
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
+              <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/mypage" element={<MyPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/rewards" element={<RewardsPage />} />
             </Route>
           </Route>
 
