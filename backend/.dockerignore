@@ -1,0 +1,40 @@
+# ===========================================
+# Backend .dockerignore
+# ===========================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build outputs
+build/
+bin/
+out/
+target/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Gradle
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+logs/
+
+# Test files
+src/test/
+
+# Documentation
+*.md
+docs/
+
+# OS
+.DS_Store
+Thumbs.db

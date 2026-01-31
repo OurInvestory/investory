@@ -1,0 +1,50 @@
+# ===========================================
+# Frontend .dockerignore
+# ===========================================
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test
+coverage/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+
+# Documentation
+*.md
+docs/
+
+# Environment (use docker environment instead)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.swp
+*.swo
