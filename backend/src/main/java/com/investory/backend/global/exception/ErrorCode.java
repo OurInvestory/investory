@@ -32,8 +32,18 @@ public enum ErrorCode {
     INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "E002", "인증 코드가 일치하지 않습니다."),
     EXPIRED_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "E003", "만료된 인증 코드입니다."),
     
-    // Product
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "상품을 찾을 수 없습니다."),
+    // Stock
+    STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "종목을 찾을 수 없습니다."),
+    DUPLICATE_WATCHLIST(HttpStatus.CONFLICT, "S002", "이미 관심 종목에 등록되어 있습니다."),
+    
+    // Order
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "O001", "주문을 찾을 수 없습니다."),
+    ORDER_CANNOT_CANCEL(HttpStatus.BAD_REQUEST, "O002", "취소할 수 없는 주문입니다."),
+    INVALID_ORDER_PRICE(HttpStatus.BAD_REQUEST, "O003", "유효하지 않은 주문 가격입니다."),
+    INSUFFICIENT_HOLDING(HttpStatus.BAD_REQUEST, "O004", "보유 수량이 부족합니다."),
+    
+    // Holding
+    HOLDING_NOT_FOUND(HttpStatus.NOT_FOUND, "H001", "보유 종목을 찾을 수 없습니다."),
     
     // WMTI
     WMTI_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "W001", "투자 성향 분석이 완료되지 않았습니다.");
