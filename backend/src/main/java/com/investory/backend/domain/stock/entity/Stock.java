@@ -7,7 +7,11 @@ import lombok.*;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "stocks")
+@Table(name = "stocks", indexes = {
+    @Index(name = "idx_stock_code", columnList = "code"),
+    @Index(name = "idx_stock_market", columnList = "market"),
+    @Index(name = "idx_stock_sector", columnList = "sector")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -17,6 +21,9 @@ public class Stock extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @Column(nullable = false, unique = true, length = 20)
     private String code;

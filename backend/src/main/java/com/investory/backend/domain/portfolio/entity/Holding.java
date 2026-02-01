@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "holdings", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"user_id", "stock_id"})
+}, indexes = {
+    @Index(name = "idx_holding_user", columnList = "user_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -21,6 +23,9 @@ public class Holding extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
