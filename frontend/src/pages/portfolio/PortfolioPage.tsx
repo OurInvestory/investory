@@ -32,7 +32,7 @@ export default function PortfolioPage() {
   const holdings = (portfolioData?.holdings || []).map((h: any, i: number) => ({
     id: h.id, name: h.stockName, code: h.stockCode, market: h.market,
     quantity: h.quantity, avgPrice: h.averagePrice, currentPrice: h.currentPrice,
-    totalValue: h.totalValue, returnRate: h.profitLossRate, returnAmount: h.profitLoss,
+    totalValue: h.currentValue, returnRate: h.profitLossRate, returnAmount: h.profitLoss,
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 

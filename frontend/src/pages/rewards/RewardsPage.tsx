@@ -32,19 +32,19 @@ export default function RewardsPage() {
 
   const levelInfo = levelData ? {
     level: levelData.level,
-    title: levelTiers.find(t => levelData.level >= t.level)?.title || '입문자',
-    currentExp: levelData.experience,
-    requiredExp: levelData.nextLevelExperience || 1000,
+    title: levelData.title || levelTiers.find(t => levelData.level >= t.level)?.title || '입문자',
+    currentExp: levelData.currentExp,
+    requiredExp: levelData.requiredExp || 1000,
     nextTitle: levelTiers.find(t => levelData.level < t.level)?.title || '마스터',
   } : {
     level: 1, title: '입문자', currentExp: 0, requiredExp: 1000, nextTitle: '초보 투자자',
   };
 
   const achievements = (achievementsData || []).map((a: any) => ({
-    id: a.id, name: a.name, description: a.description,
+    id: a.id, name: a.name, description: a.description, code: a.code,
     icon: ACHIEVEMENT_ICONS[a.code] || Trophy,
-    isUnlocked: a.achieved, unlockedAt: a.achievedAt,
-    progress: a.progress, maxProgress: a.maxProgress, expReward: a.rewardExperience,
+    isUnlocked: a.isUnlocked, unlockedAt: a.unlockedAt,
+    progress: a.currentProgress, maxProgress: a.maxProgress, expReward: a.expReward,
   }));
 
   const expProgress = levelInfo.requiredExp > 0 ? (levelInfo.currentExp / levelInfo.requiredExp) * 100 : 0;

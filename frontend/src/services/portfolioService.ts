@@ -5,14 +5,14 @@ export interface HoldingResponse {
   stockCode: string
   stockName: string
   market: string
+  logoUrl?: string
   quantity: number
   averagePrice: number
   currentPrice: number
-  totalValue: number
   totalInvestment: number
+  currentValue: number
   profitLoss: number
   profitLossRate: number
-  dailyProfitLoss: number
   weight: number
 }
 
@@ -23,6 +23,7 @@ export interface PortfolioResponse {
   totalProfitLossRate: number
   dailyProfitLoss: number
   dailyProfitLossRate: number
+  holdingCount: number
   holdings: HoldingResponse[]
 }
 

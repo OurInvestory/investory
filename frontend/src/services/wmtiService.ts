@@ -1,28 +1,43 @@
 import apiClient from './api'
 
+export interface WmtiOption {
+  id: number
+  text: string
+}
+
 export interface WmtiQuestion {
   id: number
   question: string
-  options: { label: string; value: number }[]
+  options: WmtiOption[]
+}
+
+export interface WmtiQuestionSet {
+  questions: WmtiQuestion[]
+  totalQuestions: number
 }
 
 export interface WmtiSubmitRequest {
-  answers: { questionId: number; value: number }[]
+  answers: { questionId: number; optionId: number }[]
 }
 
 export interface WmtiResultResponse {
   id: number
-  type: string
+  resultType: string
   typeName: string
-  typeDescription: string
-  scores: Record<string, number>
+  stabilityScore: number
+  growthScore: number
+  riskScore: number
+  incomeScore: number
+  description: string
+  recommendation: string
+  traits: string[]
   createdAt: string
 }
 
 export const wmtiService = {
-  getQuestions: async () => {
-    const response = await apiClient.get<{ data: WmtiQuestion[] }>('/wmti/questions')
-    return response.data.data
+  getQuestions: async (): Promise<WmtiQuestion[]> => {
+    const response = await apiClient.get<{ data: WmtiQuestionSet }>('/wmti/questions')
+    return response.data.data.questions
   },
 
   submit: async (data: WmtiSubmitRequest) => {

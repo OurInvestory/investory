@@ -34,9 +34,9 @@ export default function MyPage() {
   const recentOrders = (ordersData?.content || []).map((o: any) => ({
     id: o.id,
     type: 'trade' as const,
-    action: o.type === 'BUY' ? 'buy' : 'sell',
+    action: o.side === 'BUY' ? 'buy' : 'sell',
     stockName: o.stockName || o.stockCode,
-    price: o.filledPrice || o.price,
+    price: o.totalAmount / o.quantity || 0,
     shares: o.quantity,
     total: o.totalAmount,
     date: o.createdAt ? formatDate(o.createdAt, 'relative') : '',

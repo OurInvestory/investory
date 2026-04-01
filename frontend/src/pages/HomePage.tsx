@@ -48,8 +48,8 @@ export default function HomePage() {
     .filter((h: any) => ['KOSPI', 'KOSDAQ'].includes(h.market))
     .map((h: any) => ({
       id: h.id, code: h.stockCode, name: h.stockName, market: h.market,
-      currentPrice: h.currentPrice, previousClose: h.currentPrice - (h.dailyProfitLoss / h.quantity || 0),
-      changePrice: h.dailyProfitLoss / h.quantity || 0, changeRate: h.profitLossRate, volume: 0, quantity: h.quantity,
+      currentPrice: h.currentPrice, previousClose: h.averagePrice,
+      changePrice: h.profitLoss / (h.quantity || 1), changeRate: h.profitLossRate, volume: 0, quantity: h.quantity,
     }));
 
   const foreignHoldings = portfolio.holdings
@@ -57,7 +57,7 @@ export default function HomePage() {
     .map((h: any) => ({
       id: h.id, code: h.stockCode, name: h.stockName, market: h.market,
       currentPrice: h.currentPrice, previousClose: h.averagePrice,
-      changePrice: h.profitLoss / h.quantity || 0, changeRate: h.profitLossRate, volume: 0, quantity: h.quantity,
+      changePrice: h.profitLoss / (h.quantity || 1), changeRate: h.profitLossRate, volume: 0, quantity: h.quantity,
     }));
 
   const hotStocks: Stock[] = (topStocksData || []).map((s: any) => ({

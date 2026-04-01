@@ -6,9 +6,11 @@ interface User {
   loginId: string
   email: string
   nickname: string
-  gender?: string
-  birthYear?: number
+  profileImage?: string
+  level: number
+  experience: number
   wmtiType?: string
+  role: string
 }
 
 interface AuthState {

@@ -12,7 +12,7 @@ export interface OrderResponse {
   id: number
   stockCode: string
   stockName: string
-  type: 'BUY' | 'SELL'
+  side: 'BUY' | 'SELL'
   orderType: 'MARKET' | 'LIMIT'
   status: 'PENDING' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED' | 'REJECTED'
   quantity: number

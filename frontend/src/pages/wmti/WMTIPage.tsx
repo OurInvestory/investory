@@ -33,7 +33,7 @@ const wmtiTypes: Record<string, { type: string; title: string; description: stri
 export default function WMTIPage() {
   const navigate = useNavigate();
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<{ questionId: number; value: number }[]>([]);
+  const [answers, setAnswers] = useState<{ questionId: number; optionId: number }[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [result, setResult] = useState<(typeof wmtiTypes)['conservative'] | null>(null);
@@ -48,13 +48,13 @@ export default function WMTIPage() {
 
   // If user already has a result, show it
   if (existingResult && !isComplete && answers.length === 0) {
-    const typeKey = existingResult.type?.toLowerCase().includes('aggressive') ? 'aggressive'
-      : existingResult.type?.toLowerCase().includes('moderate') ? 'moderate' : 'conservative';
+    const typeKey = existingResult.resultType === 'WMTI-A' ? 'aggressive'
+      : existingResult.resultType === 'WMTI-M' ? 'moderate' : 'conservative';
     const displayResult = wmtiTypes[typeKey] || {
-      type: existingResult.type,
+      type: existingResult.resultType,
       title: existingResult.typeName,
-      description: existingResult.typeDescription,
-      traits: Object.keys(existingResult.scores || {}),
+      description: existingResult.description || '',
+      traits: existingResult.traits || [],
       recommendations: [],
     };
 
@@ -131,7 +131,7 @@ export default function WMTIPage() {
     if (selectedOption === null || questions.length === 0) return;
 
     const question = questions[currentQuestion];
-    const newAnswers = [...answers, { questionId: question.id, value: selectedOption }];
+    const newAnswers = [...answers, { questionId: question.id, optionId: selectedOption }];
     setAnswers(newAnswers);
 
     if (currentQuestion < totalQuestions - 1) {
@@ -141,18 +141,18 @@ export default function WMTIPage() {
       // Submit to API
       try {
         const apiResult = await submitWmti.mutateAsync({ answers: newAnswers });
-        const typeKey = apiResult.type?.toLowerCase().includes('aggressive') ? 'aggressive'
-          : apiResult.type?.toLowerCase().includes('moderate') ? 'moderate' : 'conservative';
+        const typeKey = apiResult.resultType === 'WMTI-A' ? 'aggressive'
+          : apiResult.resultType === 'WMTI-M' ? 'moderate' : 'conservative';
         setResult(wmtiTypes[typeKey] || {
-          type: apiResult.type,
+          type: apiResult.resultType,
           title: apiResult.typeName,
-          description: apiResult.typeDescription,
-          traits: Object.keys(apiResult.scores || {}),
+          description: apiResult.description || '',
+          traits: apiResult.traits || [],
           recommendations: [],
         });
       } catch {
         // Fallback: calculate locally
-        const avgScore = newAnswers.reduce((a, b) => a + b.value, 0) / newAnswers.length;
+        const avgScore = newAnswers.reduce((a, b) => a + b.optionId, 0) / newAnswers.length;
         if (avgScore <= 2) setResult(wmtiTypes.conservative);
         else if (avgScore <= 3.5) setResult(wmtiTypes.moderate);
         else setResult(wmtiTypes.aggressive);
@@ -308,13 +308,13 @@ export default function WMTIPage() {
 
             {/* 옵션들 */}
             <div className="space-y-3 mb-8">
-              {(question.options || []).map((option: any, idx: number) => (
+              {(question.options || []).map((option: any) => (
                 <button
-                  key={idx}
-                  onClick={() => handleOptionSelect(option.value)}
+                  key={option.id}
+                  onClick={() => handleOptionSelect(option.id)}
                   className={cn(
                     'w-full p-4 rounded-xl border-2 text-left transition-all',
-                    selectedOption === option.value
+                    selectedOption === option.id
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                       : 'border-gray-200 dark:border-dark-border hover:border-gray-300 dark:hover:border-gray-600'
                   )}
@@ -323,23 +323,23 @@ export default function WMTIPage() {
                     <div
                       className={cn(
                         'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center',
-                        selectedOption === option.value
+                        selectedOption === option.id
                           ? 'border-primary-500 bg-primary-500'
                           : 'border-gray-300 dark:border-dark-border'
                       )}
                     >
-                      {selectedOption === option.value && (
+                      {selectedOption === option.id && (
                         <div className="w-2 h-2 bg-white rounded-full" />
                       )}
                     </div>
                     <div>
                       <p className={cn(
                         'font-medium',
-                        selectedOption === option.value
+                        selectedOption === option.id
                           ? 'text-primary-700 dark:text-primary-300'
                           : 'text-gray-900 dark:text-dark-text-primary'
                       )}>
-                        {option.label}
+                        {option.text}
                       </p>
                     </div>
                   </div>
