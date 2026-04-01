@@ -274,16 +274,16 @@ REDIS_PORT=6379
 | `POST` | `/orders` | 주문 생성 | ✅ |
 | `GET` | `/orders` | 주문 내역 | ✅ |
 | `GET` | `/portfolio` | 포트폴리오 조회 | ✅ |
-| `GET` | `/watchlist` | 관심종목 조회 | ✅ |
-| `POST` | `/watchlist/{code}` | 관심종목 추가 | ✅ |
-| `DELETE` | `/watchlist/{code}` | 관심종목 삭제 | ✅ |
+| `GET` | `/stocks/watchlist` | 관심종목 조회 | ✅ |
+| `POST` | `/stocks/watchlist` | 관심종목 추가 | ✅ |
+| `DELETE` | `/stocks/watchlist/{code}` | 관심종목 삭제 | ✅ |
 | `GET` | `/wmti/questions` | WMTI 문항 조회 | ✅ |
 | `POST` | `/wmti/submit` | WMTI 제출 | ✅ |
 | `GET` | `/wmti/result` | WMTI 결과 조회 | ✅ |
 | `GET` | `/rewards/level` | 레벨 정보 | ✅ |
 | `GET` | `/rewards/achievements` | 업적 목록 | ✅ |
 | `GET` | `/users/me` | 내 정보 조회 | ✅ |
-| `PUT` | `/users/me` | 프로필 수정 | ✅ |
+| `PATCH` | `/users/me` | 프로필 수정 | ✅ |
 | `DELETE` | `/users/me` | 회원 탈퇴 | ✅ |
 
 ---

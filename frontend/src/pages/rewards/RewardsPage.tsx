@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Lock, Trophy, Star, TrendingUp, Users, Target } from 'lucide-react';
 import { Tabs, Card, ProgressBar, Badge } from '@/components/common';
@@ -6,12 +6,12 @@ import { cn, formatNumber } from '@/utils';
 import { useLevelInfo, useAchievements } from '@/hooks/useApi';
 
 const levelTiers = [
-  { level: 1, title: '?낅Ц??, minExp: 0, color: 'bg-gray-400' },
-  { level: 5, title: '珥덈낫 ?ъ옄??, minExp: 1000, color: 'bg-green-500' },
-  { level: 10, title: '以묎툒 ?ъ옄??, minExp: 5000, color: 'bg-blue-500' },
-  { level: 20, title: '?숇젴 ?ъ옄??, minExp: 15000, color: 'bg-purple-500' },
-  { level: 30, title: '?꾨Ц ?ъ옄??, minExp: 35000, color: 'bg-yellow-500' },
-  { level: 50, title: '留덉뒪??, minExp: 75000, color: 'bg-red-500' },
+  { level: 1, title: '입문자', minExp: 0, color: 'bg-gray-400' },
+  { level: 5, title: '초보 투자자', minExp: 1000, color: 'bg-green-500' },
+  { level: 10, title: '중급 투자자', minExp: 5000, color: 'bg-blue-500' },
+  { level: 20, title: '숙련 투자자', minExp: 15000, color: 'bg-purple-500' },
+  { level: 30, title: '전문 투자자', minExp: 35000, color: 'bg-yellow-500' },
+  { level: 50, title: '마스터', minExp: 75000, color: 'bg-red-500' },
 ];
 
 const ACHIEVEMENT_ICONS: Record<string, any> = {
@@ -32,12 +32,12 @@ export default function RewardsPage() {
 
   const levelInfo = levelData ? {
     level: levelData.level,
-    title: levelTiers.find(t => levelData.level >= t.level)?.title || '?낅Ц??,
+    title: levelTiers.find(t => levelData.level >= t.level)?.title || '입문자',
     currentExp: levelData.experience,
     requiredExp: levelData.nextLevelExperience || 1000,
-    nextTitle: levelTiers.find(t => levelData.level < t.level)?.title || '留덉뒪??,
+    nextTitle: levelTiers.find(t => levelData.level < t.level)?.title || '마스터',
   } : {
-    level: 1, title: '?낅Ц??, currentExp: 0, requiredExp: 1000, nextTitle: '珥덈낫 ?ъ옄??,
+    level: 1, title: '입문자', currentExp: 0, requiredExp: 1000, nextTitle: '초보 투자자',
   };
 
   const achievements = (achievementsData || []).map((a: any) => ({
@@ -58,17 +58,17 @@ export default function RewardsPage() {
             <ChevronLeft className="w-6 h-6 text-gray-700 dark:text-dark-text-primary" />
           </button>
           <h1 className="font-semibold text-gray-900 dark:text-dark-text-primary ml-2">
-            {activeTab === 'level' ? '?덈꺼 & 寃쏀뿕移? : '?낆쟻'}
+            {activeTab === 'level' ? '레벨 & 경험치' : '업적'}
           </h1>
         </div>
       </div>
 
       <div className="px-4 py-4">
-        {/* ??*/}
+        {/* 탭 */}
         <Tabs
           tabs={[
-            { id: 'level', label: '?덈꺼 & 寃쏀뿕移? },
-            { id: 'achievements', label: '?낆쟻' },
+            { id: 'level', label: '레벨 & 경험치' },
+            { id: 'achievements', label: '업적' },
           ]}
           activeTab={activeTab}
           onChange={setActiveTab}
@@ -77,7 +77,7 @@ export default function RewardsPage() {
         <div className="mt-4">
           {activeTab === 'level' && (
             <div className="space-y-4">
-              {/* ?꾩옱 ?덈꺼 */}
+              {/* 현재 레벨 */}
               <Card className="p-6 text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-3xl font-bold text-white">Lv.{levelInfo.level}</span>
@@ -86,12 +86,12 @@ export default function RewardsPage() {
                   {levelInfo.title}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-dark-text-secondary mb-4">
-                  ?ㅼ쓬 ?덈꺼源뚯? {formatNumber(levelInfo.requiredExp - levelInfo.currentExp)} EXP ?꾩슂
+                  다음 레벨까지 {formatNumber(levelInfo.requiredExp - levelInfo.currentExp)} EXP 필요
                 </p>
 
                 <div className="mb-2">
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-500 dark:text-dark-text-secondary">寃쏀뿕移?/span>
+                    <span className="text-gray-500 dark:text-dark-text-secondary">경험치</span>
                     <span className="text-primary-500 font-medium">
                       {formatNumber(levelInfo.currentExp)} / {formatNumber(levelInfo.requiredExp)}
                     </span>
@@ -100,9 +100,9 @@ export default function RewardsPage() {
                 </div>
               </Card>
 
-              {/* ?덈꺼 ?곗뼱 */}
+              {/* 레벨 티어 */}
               <Card className="p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-4">?덈꺼 ?깃툒</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-4">레벨 시스템</h3>
                 <div className="space-y-3">
                   {levelTiers.map((tier) => {
                     const isCurrentTier = levelInfo.level >= tier.level && 
@@ -136,11 +136,11 @@ export default function RewardsPage() {
                             {tier.title}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-dark-text-secondary">
-                            Lv.{tier.level} ?ъ꽦 ??
+                            Lv.{tier.level} 달성 시
                           </p>
                         </div>
                         {isCurrentTier && (
-                          <Badge variant="primary">?꾩옱</Badge>
+                          <Badge variant="primary">현재</Badge>
                         )}
                         {!isAchieved && (
                           <Lock className="w-5 h-5 text-gray-400" />
@@ -151,24 +151,24 @@ export default function RewardsPage() {
                 </div>
               </Card>
 
-              {/* 寃쏀뿕移??띾뱷 諛⑸쾿 */}
+              {/* 경험치 획득 방법 */}
               <Card className="p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-4">寃쏀뿕移??띾뱷 諛⑸쾿</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-4">경험치 획득 방법</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-dark-text-secondary">?쇱씪 濡쒓렇??/span>
+                    <span className="text-gray-600 dark:text-dark-text-secondary">일일 로그인</span>
                     <span className="text-primary-500 font-medium">+10 EXP</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-dark-text-secondary">二쇱떇 嫄곕옒 ?꾨즺</span>
+                    <span className="text-gray-600 dark:text-dark-text-secondary">주식 거래 완료</span>
                     <span className="text-primary-500 font-medium">+20 EXP</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-dark-text-secondary">寃뚯떆湲 ?묒꽦</span>
+                    <span className="text-gray-600 dark:text-dark-text-secondary">게시글 작성</span>
                     <span className="text-primary-500 font-medium">+15 EXP</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-dark-text-secondary">?낆쟻 ?ъ꽦</span>
+                    <span className="text-gray-600 dark:text-dark-text-secondary">업적 달성</span>
                     <span className="text-primary-500 font-medium">+50~1000 EXP</span>
                   </div>
                 </div>
@@ -178,13 +178,13 @@ export default function RewardsPage() {
 
           {activeTab === 'achievements' && (
             <div className="space-y-4">
-              {/* ?꾨즺???낆쟻 */}
+              {/* 달성한 업적 */}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-3">
-                  ?ъ꽦???낆쟻 ({achievements.filter(a => a.isUnlocked).length})
+                  달성한 업적 ({achievements.filter((a: any) => a.isUnlocked).length})
                 </h3>
                 <div className="space-y-3">
-                  {achievements.filter(a => a.isUnlocked).map((achievement) => {
+                  {achievements.filter((a: any) => a.isUnlocked).map((achievement: any) => {
                     const Icon = achievement.icon;
                     return (
                       <Card key={achievement.id} className="p-4">
@@ -200,11 +200,11 @@ export default function RewardsPage() {
                               {achievement.description}
                             </p>
                             <p className="text-xs text-gray-400 dark:text-dark-text-secondary mt-1">
-                              ?ъ꽦?? {achievement.unlockedAt}
+                              달성일: {achievement.unlockedAt}
                             </p>
                           </div>
                           <div className="text-right">
-                            <Badge variant="success">?꾨즺</Badge>
+                            <Badge variant="success">완료</Badge>
                             <p className="text-xs text-primary-500 mt-1">+{achievement.expReward} EXP</p>
                           </div>
                         </div>
@@ -214,13 +214,13 @@ export default function RewardsPage() {
                 </div>
               </div>
 
-              {/* 吏꾪뻾 以묒씤 ?낆쟻 */}
+              {/* 진행 중인 업적 */}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-dark-text-primary mb-3">
-                  吏꾪뻾 以묒씤 ?낆쟻 ({achievements.filter(a => !a.isUnlocked).length})
+                  진행 중인 업적 ({achievements.filter((a: any) => !a.isUnlocked).length})
                 </h3>
                 <div className="space-y-3">
-                  {achievements.filter(a => !a.isUnlocked).map((achievement) => {
+                  {achievements.filter((a: any) => !a.isUnlocked).map((achievement: any) => {
                     const Icon = achievement.icon;
                     return (
                       <Card key={achievement.id} className="p-4 opacity-80">
