@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Profile({"local", "dev"})
+@Profile({"local", "dev", "docker"})
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
