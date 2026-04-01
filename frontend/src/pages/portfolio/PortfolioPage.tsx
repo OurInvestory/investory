@@ -3,46 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { Tabs, Card, Button, Badge } from '@/components/common';
 import { cn, formatNumber, formatPercent } from '@/utils';
+import { usePortfolio } from '@/hooks/useApi';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// 목업 데이터
-const mockPortfolio = {
-  totalValue: 49774925,
-  totalInvested: 49320000,
-  totalReturn: 454925,
-  totalReturnRate: 0.92,
-  dailyReturn: -4925,
-  dailyReturnRate: -0.02,
-};
-
-const mockHoldings = [
-  { id: 1, name: '삼성전자', quantity: 32, avgPrice: 68000, currentPrice: 75000, totalValue: 15420000, returnRate: 1.62, returnAmount: 245000, color: '#FF6384' },
-  { id: 2, name: 'SK하이닉스', quantity: 2, avgPrice: 125000, currentPrice: 128000, totalValue: 8950000, returnRate: -1.38, returnAmount: -125000, color: '#36A2EB' },
-  { id: 3, name: 'NAVER', quantity: 1.8, avgPrice: 69000, currentPrice: 195000, totalValue: 7320000, returnRate: 1.23, returnAmount: 68000, color: '#4BC0C0' },
-  { id: 4, name: 'LG화학', quantity: 15, avgPrice: 156000, currentPrice: 420000, totalValue: 6180000, returnRate: 2.59, returnAmount: 158000, color: '#FFCE56' },
-  { id: 5, name: '카카오', quantity: 11, avgPrice: 78000, currentPrice: 52000, totalValue: 4920000, returnRate: -1.56, returnAmount: -78000, color: '#9966FF' },
-];
-
-const mockForeignHoldings = [
-  { id: 6, name: '테슬라', code: 'TSLA', quantity: 5, avgPrice: 240.00, currentPrice: 245.67, totalValue: 1228.35, returnRate: 2.36, returnAmount: 28.35 },
-  { id: 7, name: '애플', code: 'AAPL', quantity: 10, avgPrice: 185.00, currentPrice: 189.43, totalValue: 1894.30, returnRate: 2.40, returnAmount: 44.30 },
-];
+const CHART_COLORS = ['#FF6384', '#36A2EB', '#4BC0C0', '#FFCE56', '#9966FF', '#FF9F40', '#C9CBCF', '#7BC8A4'];
 
 export default function PortfolioPage() {
   const navigate = useNavigate();
   const [showChart, setShowChart] = useState(false);
   const [sortBy, setSortBy] = useState<'return' | 'value'>('return');
 
+  const { data: portfolioData, isLoading } = usePortfolio();
+
+  const portfolio = portfolioData ? {
+    totalValue: portfolioData.totalValue,
+    totalInvested: portfolioData.totalInvestment,
+    totalReturn: portfolioData.totalProfitLoss,
+    totalReturnRate: portfolioData.totalProfitLossRate,
+    dailyReturn: portfolioData.dailyProfitLoss,
+    dailyReturnRate: portfolioData.dailyProfitLossRate,
+  } : {
+    totalValue: 0, totalInvested: 0, totalReturn: 0, totalReturnRate: 0, dailyReturn: 0, dailyReturnRate: 0,
+  };
+
+  const holdings = (portfolioData?.holdings || []).map((h: any, i: number) => ({
+    id: h.id, name: h.stockName, code: h.stockCode, market: h.market,
+    quantity: h.quantity, avgPrice: h.averagePrice, currentPrice: h.currentPrice,
+    totalValue: h.totalValue, returnRate: h.profitLossRate, returnAmount: h.profitLoss,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const domesticHoldings = holdings.filter((h: any) => ['KOSPI', 'KOSDAQ'].includes(h.market));
+  const foreignHoldings = holdings.filter((h: any) => ['NASDAQ', 'NYSE', 'AMEX'].includes(h.market));
+
   // 차트 데이터
   const chartData = {
-    labels: mockHoldings.map(h => h.name),
+    labels: holdings.map((h: any) => h.name),
     datasets: [
       {
-        data: mockHoldings.map(h => h.totalValue),
-        backgroundColor: mockHoldings.map(h => h.color),
+        data: holdings.map((h: any) => h.totalValue),
+        backgroundColor: holdings.map((h: any) => h.color),
         borderWidth: 0,
       },
     ],
@@ -57,8 +60,16 @@ export default function PortfolioPage() {
     },
   };
 
-  const priceColor = mockPortfolio.totalReturnRate >= 0 ? 'text-danger-500' : 'text-success-500';
-  const dailyColor = mockPortfolio.dailyReturnRate >= 0 ? 'text-danger-500' : 'text-success-500';
+  const priceColor = portfolio.totalReturnRate >= 0 ? 'text-danger-500' : 'text-success-500';
+  const dailyColor = portfolio.dailyReturnRate >= 0 ? 'text-danger-500' : 'text-success-500';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-dark-bg-primary flex items-center justify-center">
+        <p className="text-gray-500">로딩 중...</p>
+      </div>
+    );
+  }
 
   if (showChart) {
     return (
@@ -77,7 +88,7 @@ export default function PortfolioPage() {
           <div className="text-center mb-8">
             <p className="text-sm text-gray-500 dark:text-dark-text-secondary mb-1">총 금액</p>
             <p className="text-3xl font-bold text-gray-900 dark:text-dark-text-primary">
-              {formatNumber(mockPortfolio.totalValue)}원
+              {formatNumber(portfolio.totalValue)}원
             </p>
           </div>
 
@@ -87,15 +98,15 @@ export default function PortfolioPage() {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <p className="text-sm text-gray-500 dark:text-dark-text-secondary">총 수익률</p>
               <p className={cn('text-2xl font-bold', priceColor)}>
-                +{mockPortfolio.totalReturnRate.toFixed(1)}%
+                {portfolio.totalReturnRate >= 0 ? '+' : ''}{portfolio.totalReturnRate.toFixed(1)}%
               </p>
             </div>
           </div>
 
           {/* 종목별 비중 */}
           <div className="space-y-4">
-            {mockHoldings.map((holding) => {
-              const percentage = ((holding.totalValue / mockPortfolio.totalValue) * 100).toFixed(0);
+            {holdings.map((holding: any) => {
+              const percentage = portfolio.totalValue > 0 ? ((holding.totalValue / portfolio.totalValue) * 100).toFixed(0) : '0';
               return (
                 <div key={holding.id} className="flex items-center gap-3">
                   <div
@@ -139,7 +150,7 @@ export default function PortfolioPage() {
         <div className="mb-6">
           <p className="text-sm text-gray-500 dark:text-dark-text-secondary mb-1">내 투자 금액</p>
           <p className="text-3xl font-bold text-gray-900 dark:text-dark-text-primary mb-1">
-            {formatNumber(mockPortfolio.totalValue)}원
+            {formatNumber(portfolio.totalValue)}원
           </p>
           <p className="text-sm text-gray-500 dark:text-dark-text-secondary flex items-center gap-1">
             <span className="inline-block w-4 h-4 rounded-full border border-gray-300 text-center text-xs">i</span>
@@ -152,19 +163,19 @@ export default function PortfolioPage() {
           <div>
             <p className="text-sm text-gray-500 dark:text-dark-text-secondary">원금</p>
             <p className="font-semibold text-gray-900 dark:text-dark-text-primary">
-              {formatNumber(mockPortfolio.totalInvested)}원
+              {formatNumber(portfolio.totalInvested)}원
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-dark-text-secondary">총 수익</p>
             <p className={cn('font-semibold', priceColor)}>
-              {mockPortfolio.totalReturn >= 0 ? '+' : ''}{formatNumber(mockPortfolio.totalReturn)}원 ({formatPercent(mockPortfolio.totalReturnRate)})
+              {portfolio.totalReturn >= 0 ? '+' : ''}{formatNumber(portfolio.totalReturn)}원 ({formatPercent(portfolio.totalReturnRate)})
             </p>
           </div>
           <div className="col-span-2">
             <p className="text-sm text-gray-500 dark:text-dark-text-secondary">일간 수익</p>
             <p className={cn('font-semibold', dailyColor)}>
-              {mockPortfolio.dailyReturn >= 0 ? '+' : ''}{formatNumber(mockPortfolio.dailyReturn)}원 ({formatPercent(mockPortfolio.dailyReturnRate)})
+              {portfolio.dailyReturn >= 0 ? '+' : ''}{formatNumber(portfolio.dailyReturn)}원 ({formatPercent(portfolio.dailyReturnRate)})
             </p>
           </div>
         </div>
@@ -194,10 +205,10 @@ export default function PortfolioPage() {
           </div>
 
           <Card className="divide-y divide-gray-100 dark:divide-dark-border">
-            {mockHoldings.map((holding) => (
+            {domesticHoldings.map((holding: any) => (
               <div
                 key={holding.id}
-                onClick={() => navigate(`/stock/${holding.id}`)}
+                onClick={() => navigate(`/stock/${holding.code}`)}
                 className="p-4 hover:bg-gray-50 dark:hover:bg-dark-bg-primary cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -252,7 +263,7 @@ export default function PortfolioPage() {
                 <span>총 금액</span>
               </div>
             </div>
-            {mockForeignHoldings.map((holding) => (
+            {foreignHoldings.map((holding: any) => (
               <div
                 key={holding.id}
                 className="flex items-center justify-between py-2"
@@ -262,8 +273,8 @@ export default function PortfolioPage() {
                   <span className={holding.returnRate >= 0 ? 'text-danger-500' : 'text-success-500'}>
                     {formatPercent(holding.returnRate)}
                   </span>
-                  <span className="text-gray-700 dark:text-dark-text-primary">${holding.avgPrice.toFixed(2)}</span>
-                  <span className="text-gray-700 dark:text-dark-text-primary">${holding.totalValue.toFixed(2)}</span>
+                  <span className="text-gray-700 dark:text-dark-text-primary">{formatNumber(holding.avgPrice)}원</span>
+                  <span className="text-gray-700 dark:text-dark-text-primary">{formatNumber(holding.totalValue)}원</span>
                 </div>
               </div>
             ))}

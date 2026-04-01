@@ -2,21 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Search as SearchIcon, X, TrendingUp } from 'lucide-react';
 import { Input, Badge, StockListItem } from '@/components/common';
+import { useStockSearch, useTopStocks } from '@/hooks/useApi';
 import type { Stock } from '@/types';
-
-// 목업 데이터 - 인기 검색어
-const popularSearches = [
-  { rank: 1, name: '삼성전자', change: 2.34 },
-  { rank: 2, name: 'SK하이닉스', change: -1.56 },
-  { rank: 3, name: 'NAVER', change: 1.83 },
-  { rank: 4, name: 'LG에너지솔루션', change: -1.04 },
-  { rank: 5, name: '두산에너빌리티', change: 2.3 },
-  { rank: 6, name: '삼성바이오', change: 2.41 },
-  { rank: 7, name: '로봇트즈', change: -4.47 },
-  { rank: 8, name: '카카오', change: 3.3 },
-  { rank: 9, name: '현대차', change: 3.3 },
-  { rank: 10, name: 'HJ중공업', change: 5.3 },
-];
 
 const recentSearches = ['삼성전자', '테슬라', '애플'];
 
@@ -27,27 +14,38 @@ const categoryButtons = [
   { icon: '🌱', label: '신규상장', color: 'bg-purple-100' },
 ];
 
-const mockSearchResults: Stock[] = [
-  { id: 1, code: '005930', name: '삼성전자', market: 'KOSPI', currentPrice: 71500, previousClose: 70000, changePrice: 1500, changeRate: 2.14, volume: 15234567 },
-  { id: 2, code: '005935', name: '삼성전자우', market: 'KOSPI', currentPrice: 58000, previousClose: 57500, changePrice: 500, changeRate: 0.87, volume: 5234567 },
-];
-
 export default function SearchPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Stock[]>([]);
+
+  // Real API hooks
+  const { data: searchData } = useStockSearch(searchQuery);
+  const { data: topStocksData } = useTopStocks('volume', 10);
+
+  const searchResults: Stock[] = searchData?.content
+    ? searchData.content.map((s: any) => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        market: s.market,
+        currentPrice: s.currentPrice,
+        previousClose: s.currentPrice - s.changeAmount,
+        changePrice: s.changeAmount,
+        changeRate: s.changeRate,
+        volume: s.volume,
+      }))
+    : [];
+
+  const topStocks = topStocksData
+    ? topStocksData.map((s: any, idx: number) => ({
+        rank: idx + 1,
+        name: s.name,
+        change: s.changeRate,
+      }))
+    : [];
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.length > 0) {
-      // 실제로는 API 호출
-      setSearchResults(mockSearchResults.filter(s => 
-        s.name.toLowerCase().includes(query.toLowerCase()) ||
-        s.code.toLowerCase().includes(query.toLowerCase())
-      ));
-    } else {
-      setSearchResults([]);
-    }
   };
 
   return (
@@ -129,7 +127,7 @@ export default function SearchPage() {
                 <span className="text-xs text-gray-500 dark:text-dark-text-secondary">오늘 16:00 기준</span>
               </div>
               <div className="space-y-1">
-                {popularSearches.map((item) => (
+                {(topStocks.length > 0 ? topStocks : []).map((item: any) => (
                   <button
                     key={item.rank}
                     onClick={() => handleSearch(item.name)}

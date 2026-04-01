@@ -1,72 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, MoreHorizontal, ChevronRight, Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import { ChevronLeft, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Tabs, Card, Avatar, Badge } from '@/components/common';
-import { cn, formatDate } from '@/utils';
-
-// 목업 데이터
-const mockUser = {
-  name: '김투자',
-  nickname: '김',
-  joinDate: '2024.03.15',
-  postsCount: 7,
-  followingCount: 3,
-  followersCount: 5,
-  level: 5,
-  experience: 1250,
-  wmtiType: 'INTJ',
-};
-
-const mockActivities = [
-  {
-    id: 1,
-    type: 'post',
-    stockName: '테슬라',
-    content: '이거 오르긴 하겠지?',
-    likes: 12,
-    comments: 5,
-    date: '9월 9일',
-  },
-  {
-    id: 2,
-    type: 'post',
-    stockName: '테슬라',
-    content: '제발..',
-    likes: 10,
-    comments: 2,
-    date: '9월 8일',
-  },
-  {
-    id: 3,
-    type: 'post',
-    stockName: '테슬라',
-    content: '드디어?',
-    likes: 8,
-    comments: 1,
-    date: '9월 4일',
-  },
-  {
-    id: 4,
-    type: 'trade',
-    action: 'buy',
-    stockName: '테슬라',
-    price: 23.50,
-    shares: 1,
-    total: 335.02,
-    date: '9월 1일',
-  },
-  {
-    id: 5,
-    type: 'trade',
-    action: 'sell',
-    stockName: '테슬라',
-    price: 1.41,
-    shares: 1,
-    total: 329.45,
-    date: '9월 1일',
-  },
-];
+import { cn, formatDate, formatNumber } from '@/utils';
+import { useMyProfile, useOrders } from '@/hooks/useApi';
 
 export default function MyPage() {
   const navigate = useNavigate();
@@ -74,7 +12,35 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState('activity');
   const [activityFilter, setActivityFilter] = useState('all');
 
-  const user = { ...mockUser, ...authUser };
+  const { data: profileData } = useMyProfile();
+  const { data: ordersData } = useOrders(0, 10);
+
+  const user = profileData ? {
+    name: profileData.nickname,
+    nickname: profileData.nickname,
+    joinDate: profileData.createdAt ? formatDate(profileData.createdAt, 'long') : '',
+    level: profileData.level,
+    experience: profileData.experience,
+    wmtiType: profileData.wmtiType,
+  } : {
+    name: authUser?.nickname || '사용자',
+    nickname: authUser?.nickname || '사용자',
+    joinDate: '',
+    level: 1,
+    experience: 0,
+    wmtiType: undefined,
+  };
+
+  const recentOrders = (ordersData?.content || []).map((o: any) => ({
+    id: o.id,
+    type: 'trade' as const,
+    action: o.type === 'BUY' ? 'buy' : 'sell',
+    stockName: o.stockName || o.stockCode,
+    price: o.filledPrice || o.price,
+    shares: o.quantity,
+    total: o.totalAmount,
+    date: o.createdAt ? formatDate(o.createdAt, 'relative') : '',
+  }));
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg-primary pb-20">
@@ -107,20 +73,18 @@ export default function MyPage() {
         {/* 통계 */}
         <div className="flex justify-around py-4 border-y border-gray-100 dark:border-dark-border mb-6">
           <div className="text-center">
-            <p className="font-semibold text-gray-900 dark:text-dark-text-primary">{mockUser.postsCount}</p>
-            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">작성글</p>
+            <p className="font-semibold text-gray-900 dark:text-dark-text-primary">Lv.{user.level}</p>
+            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">레벨</p>
           </div>
-          <button className="text-center">
+          <div className="text-center">
+            <p className="font-semibold text-gray-900 dark:text-dark-text-primary">{user.experience}</p>
+            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">경험치</p>
+          </div>
+          <button className="text-center" onClick={() => navigate('/wmti')}>
             <p className="font-semibold text-gray-900 dark:text-dark-text-primary">
-              {mockUser.followingCount} <ChevronRight className="w-4 h-4 inline" />
+              {user.wmtiType || '미진단'} <ChevronRight className="w-4 h-4 inline" />
             </p>
-            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">팔로워</p>
-          </button>
-          <button className="text-center">
-            <p className="font-semibold text-gray-900 dark:text-dark-text-primary">
-              {mockUser.followersCount} <ChevronRight className="w-4 h-4 inline" />
-            </p>
-            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">팔로잉</p>
+            <p className="text-sm text-gray-500 dark:text-dark-text-secondary">WMTI</p>
           </button>
         </div>
 
@@ -172,57 +136,32 @@ export default function MyPage() {
 
               {/* 활동 목록 */}
               <div className="space-y-4">
-                {mockActivities
-                  .filter((a) => activityFilter === 'all' || 
-                    (activityFilter === 'posts' && a.type === 'post') ||
-                    (activityFilter === 'trades' && a.type === 'trade'))
-                  .map((activity) => (
+                {recentOrders.length > 0 ? recentOrders
+                  .filter((a: any) => activityFilter === 'all' || activityFilter === 'trades')
+                  .map((activity: any) => (
                     <Card key={activity.id} className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant={activity.type === 'post' ? 'primary' : 'success'}>
+                          <Badge variant={activity.action === 'buy' ? 'primary' : 'success'}>
                             {activity.stockName}
                           </Badge>
                           <span className="text-sm text-gray-500 dark:text-dark-text-secondary">
-                            {activity.type === 'post' ? '에서 작성한 글' : 
-                              activity.action === 'buy' ? '1주 구매' : '1주 판매'}
+                            {activity.action === 'buy' ? `${activity.shares}주 구매` : `${activity.shares}주 판매`}
                           </span>
                         </div>
-                        <button className="p-1">
-                          <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                        </button>
                       </div>
-
-                      {activity.type === 'post' ? (
-                        <>
-                          <p className="text-gray-900 dark:text-dark-text-primary mb-3">
-                            {activity.content}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-dark-text-secondary">
-                            <button className="flex items-center gap-1">
-                              <Heart className="w-4 h-4" />
-                              {activity.likes}
-                            </button>
-                            <button className="flex items-center gap-1">
-                              <MessageCircle className="w-4 h-4" />
-                              {activity.comments}
-                            </button>
-                            <button className="flex items-center gap-1">
-                              <Repeat2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500 dark:text-dark-text-secondary">
-                            ${activity.price?.toFixed(2)} 1주당 ${activity.total?.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 dark:text-dark-text-secondary">
+                          {formatNumber(activity.price)}원 × {activity.shares}주 = {formatNumber(activity.total)}원
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-400 mt-2">{activity.date}</p>
                     </Card>
-                  ))}
+                  )) : (
+                  <div className="text-center py-10 text-gray-500 dark:text-dark-text-secondary">
+                    최근 활동이 없습니다.
+                  </div>
+                )}
               </div>
             </div>
           )}

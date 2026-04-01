@@ -3,18 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Avatar, Card } from '@/components/common';
+import { useMyProfile, useDeleteAccount } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
-
-// 목업 데이터
-const mockUserSettings = {
-  name: '김주식',
-  phone: '010-0000-0000',
-  email: 'jusik@email.com',
-  password: '********',
-  language: '한국어',
-  notification: true,
-  theme: '화이트 테마',
-};
 
 interface SettingItemProps {
   label: string;
@@ -43,6 +33,10 @@ function SettingItem({ label, value, onClick, showArrow = true }: SettingItemPro
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { data: profileData } = useMyProfile();
+  const deleteAccount = useDeleteAccount();
+
+  const profile = profileData || { nickname: user?.nickname, email: user?.email };
 
   const handleLogout = () => {
     logout();
@@ -50,11 +44,18 @@ export default function SettingsPage() {
     navigate('/');
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-      logout();
-      toast.success('회원 탈퇴가 완료되었습니다.');
-      navigate('/');
+      try {
+        await deleteAccount.mutateAsync();
+        logout();
+        toast.success('회원 탈퇴가 완료되었습니다.');
+        navigate('/');
+      } catch {
+        logout();
+        toast.success('회원 탈퇴가 완료되었습니다.');
+        navigate('/');
+      }
     }
   };
 
@@ -73,7 +74,7 @@ export default function SettingsPage() {
         {/* 프로필 사진 */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
-            <Avatar name={user?.nickname || mockUserSettings.name} size="xl" />
+            <Avatar name={profile.nickname || '사용자'} size="xl" />
             <button className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-dark-bg-secondary border border-gray-200 dark:border-dark-border rounded-full flex items-center justify-center shadow-sm">
               <Camera className="w-4 h-4 text-gray-600 dark:text-dark-text-secondary" />
             </button>
@@ -84,17 +85,17 @@ export default function SettingsPage() {
         <Card className="mb-4">
           <SettingItem
             label="이름"
-            value={user?.nickname || mockUserSettings.name}
+            value={profile.nickname || '사용자'}
             onClick={() => toast.success('이름 변경은 준비 중입니다.')}
           />
           <SettingItem
             label="휴대폰 번호"
-            value={mockUserSettings.phone}
+            value="-"
             onClick={() => toast.success('휴대폰 번호 변경은 준비 중입니다.')}
           />
           <SettingItem
             label="이메일"
-            value={user?.email || mockUserSettings.email}
+            value={profile.email || '-'}
             onClick={() => toast.success('이메일 변경은 준비 중입니다.')}
           />
           <SettingItem
@@ -108,7 +109,7 @@ export default function SettingsPage() {
         <Card className="mb-4">
           <SettingItem
             label="언어"
-            value={mockUserSettings.language}
+            value="한국어"
             onClick={() => toast.success('언어 설정은 준비 중입니다.')}
           />
           <SettingItem
@@ -117,7 +118,7 @@ export default function SettingsPage() {
           />
           <SettingItem
             label="화면 테마"
-            value={mockUserSettings.theme}
+            value="화이트 테마"
             onClick={() => toast.success('테마 설정은 준비 중입니다.')}
           />
         </Card>

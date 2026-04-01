@@ -3,77 +3,80 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Heart, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { Tabs, Button, Card, Badge } from '@/components/common';
 import { cn, formatNumber, formatPercent } from '@/utils';
+import { useStockDetail, useOrderbook, useIsInWatchlist, useAddToWatchlist, useRemoveFromWatchlist } from '@/hooks/useApi';
 import type { StockDetail, Orderbook } from '@/types';
-
-// 목업 데이터
-const mockStock: StockDetail = {
-  id: 1,
-  code: '005930',
-  name: '삼성전자',
-  market: 'KOSPI',
-  currentPrice: 71500,
-  previousClose: 70000,
-  changePrice: 1500,
-  changeRate: 2.14,
-  volume: 15234567,
-  high52Week: 85000,
-  low52Week: 58000,
-  per: 15.2,
-  pbr: 1.3,
-  eps: 4700,
-  dividendYield: 2.5,
-};
-
-const mockOrderbook: Orderbook = {
-  asks: [
-    { price: 71900, quantity: 15130, type: 'ask' },
-    { price: 71800, quantity: 12980, type: 'ask' },
-  ],
-  bids: [
-    { price: 71500, quantity: 1250, type: 'bid' },
-    { price: 71400, quantity: 890, type: 'bid' },
-    { price: 71300, quantity: 2100, type: 'bid' },
-    { price: 71200, quantity: 1560, type: 'bid' },
-    { price: 71100, quantity: 860, type: 'bid' },
-    { price: 71000, quantity: 3200, type: 'bid' },
-    { price: 70900, quantity: 2800, type: 'bid' },
-    { price: 70800, quantity: 1800, type: 'bid' },
-    { price: 70700, quantity: 2450, type: 'bid' },
-    { price: 70600, quantity: 1680, type: 'bid' },
-    { price: 70500, quantity: 3100, type: 'bid' },
-    { price: 70400, quantity: 2200, type: 'bid' },
-  ],
-};
-
-const mockChartData = [
-  { date: '9:00', price: 70000 },
-  { date: '10:00', price: 70500 },
-  { date: '11:00', price: 71200 },
-  { date: '12:00', price: 70800 },
-  { date: '13:00', price: 71000 },
-  { date: '14:00', price: 71500 },
-  { date: '15:00', price: 71500 },
-];
-
-const mockInvestorData = {
-  foreigners: { buy: 45, sell: 55 },
-  institutions: { buy: 60, sell: 40 },
-  individuals: { buy: 35, sell: 65 },
-};
-
-const mockComments = [
-  { id: 1, user: '익명', content: '삼성이야 뭐 믿고 간다~', time: '더보기' },
-];
 
 export default function StockDetailPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('chart');
   const [chartPeriod, setChartPeriod] = useState('1D');
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isOwned, setIsOwned] = useState(true); // 보유 여부
 
-  const stock = mockStock;
+  // Real API hooks
+  const { data: stockData } = useStockDetail(code || '');
+  const { data: orderbookData } = useOrderbook(code || '');
+  const { data: inWatchlist } = useIsInWatchlist(code || '');
+  const addToWatchlist = useAddToWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
+
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Map API data to view model
+  const stock: StockDetail = stockData ? {
+    id: stockData.id,
+    code: stockData.code,
+    name: stockData.name,
+    market: stockData.market,
+    currentPrice: stockData.currentPrice,
+    previousClose: stockData.currentPrice - stockData.changeAmount,
+    changePrice: stockData.changeAmount,
+    changeRate: stockData.changeRate,
+    volume: stockData.volume,
+    high52Week: stockData.high52Week,
+    low52Week: stockData.low52Week,
+    sector: stockData.sector,
+  } : {
+    id: 0, code: code || '', name: '로딩 중...', market: 'KOSPI',
+    currentPrice: 0, previousClose: 0, changePrice: 0, changeRate: 0, volume: 0,
+  };
+
+  const orderbook: Orderbook = orderbookData ? {
+    asks: orderbookData.asks.map((e: any) => ({ price: e.price, quantity: e.quantity, type: 'ask' as const })),
+    bids: orderbookData.bids.map((e: any) => ({ price: e.price, quantity: e.quantity, type: 'bid' as const })),
+  } : { asks: [], bids: [] };
+
+  const isOwned = true;
+
+  const handleToggleFavorite = async () => {
+    try {
+      if (inWatchlist || isFavorite) {
+        await removeFromWatchlist.mutateAsync(code || '');
+        setIsFavorite(false);
+      } else {
+        await addToWatchlist.mutateAsync({ stockCode: code || '' });
+        setIsFavorite(true);
+      }
+    } catch {
+      // silently fail
+    }
+  };
+
+  // Chart placeholder data
+  const chartData = stock.currentPrice > 0 ? [
+    { date: '9:00', price: stock.previousClose },
+    { date: '10:00', price: stock.previousClose + (stock.changePrice * 0.3) },
+    { date: '11:00', price: stock.previousClose + (stock.changePrice * 0.6) },
+    { date: '12:00', price: stock.previousClose + (stock.changePrice * 0.4) },
+    { date: '13:00', price: stock.previousClose + (stock.changePrice * 0.7) },
+    { date: '14:00', price: stock.previousClose + (stock.changePrice * 0.9) },
+    { date: '15:00', price: stock.currentPrice },
+  ] : [];
+
+  const investorData = {
+    foreigners: { buy: 45, sell: 55 },
+    institutions: { buy: 60, sell: 40 },
+    individuals: { buy: 35, sell: 65 },
+  };
   const priceColor = stock.changeRate >= 0 ? 'text-danger-500' : 'text-success-500';
 
   return (
@@ -87,10 +90,10 @@ export default function StockDetailPage() {
           <h1 className="font-semibold text-gray-900 dark:text-dark-text-primary">{stock.name}</h1>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleToggleFavorite}
               className="p-2"
             >
-              <Heart className={cn('w-6 h-6', isFavorite ? 'fill-danger-500 text-danger-500' : 'text-gray-400')} />
+              <Heart className={cn('w-6 h-6', (isFavorite || inWatchlist) ? 'fill-danger-500 text-danger-500' : 'text-gray-400')} />
             </button>
             <button className="p-2">
               <MoreHorizontal className="w-6 h-6 text-gray-700 dark:text-dark-text-primary" />
@@ -131,14 +134,14 @@ export default function StockDetailPage() {
             <div className="space-y-4">
               {/* 간단한 차트 시각화 */}
               <div className="h-48 bg-gray-50 dark:bg-dark-bg-secondary rounded-xl flex items-end justify-around p-4">
-                {mockChartData.map((data, index) => (
+                {chartData.map((data, index) => (
                   <div key={index} className="flex flex-col items-center gap-1">
                     <div
                       className={cn(
                         'w-6 rounded-t',
-                        data.price > 70500 ? 'bg-danger-500' : 'bg-success-500'
+                        data.price > stock.previousClose ? 'bg-danger-500' : 'bg-success-500'
                       )}
-                      style={{ height: `${(data.price - 69500) / 30}px` }}
+                      style={{ height: `${Math.max(10, Math.min(100, ((data.price - stock.previousClose * 0.99) / (stock.previousClose * 0.02)) * 60))}px` }}
                     />
                     <span className="text-xs text-gray-500">{data.date.split(':')[0]}</span>
                   </div>
@@ -187,9 +190,9 @@ export default function StockDetailPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { label: '외국인', ...mockInvestorData.foreigners },
-                    { label: '기관', ...mockInvestorData.institutions },
-                    { label: '개인', ...mockInvestorData.individuals },
+                    { label: '외국인', ...investorData.foreigners },
+                    { label: '기관', ...investorData.institutions },
+                    { label: '개인', ...investorData.individuals },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <span className="w-12 text-sm text-gray-600 dark:text-dark-text-secondary">{item.label}</span>
@@ -247,7 +250,7 @@ export default function StockDetailPage() {
             <div className="space-y-4">
               <Card className="p-0 overflow-hidden">
                 {/* 매도 호가 */}
-                {mockOrderbook.asks.slice().reverse().map((entry, index) => (
+                {orderbook.asks.slice().reverse().map((entry, index) => (
                   <div key={`ask-${index}`} className="flex items-center border-b border-gray-100 dark:border-dark-border">
                     <div className="flex-1 py-2 px-3 text-right">
                       <span className="text-success-500 font-medium">{formatNumber(entry.price)}</span>
@@ -268,7 +271,7 @@ export default function StockDetailPage() {
                 </div>
                 
                 {/* 매수 호가 */}
-                {mockOrderbook.bids.map((entry, index) => (
+                {orderbook.bids.map((entry, index) => (
                   <div key={`bid-${index}`} className="flex items-center border-b border-gray-100 dark:border-dark-border last:border-b-0">
                     <div className="w-20 py-2 px-3 bg-danger-50 dark:bg-danger-900/20">
                       <span className="text-sm text-danger-600 dark:text-danger-400">{formatNumber(entry.quantity)}</span>

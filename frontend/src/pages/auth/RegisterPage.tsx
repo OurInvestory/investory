@@ -37,9 +37,9 @@ export default function RegisterPage() {
     }
     setIsCheckingId(true)
     try {
-      const result = await authService.checkAvailability(loginId)
-      setIdAvailable(result.loginIdAvailable)
-      if (result.loginIdAvailable) {
+      const available = await authService.checkLoginIdAvailable(loginId)
+      setIdAvailable(available)
+      if (available) {
         toast.success('사용 가능한 아이디입니다.')
       } else {
         toast.error('이미 사용 중인 아이디입니다.')
@@ -58,9 +58,9 @@ export default function RegisterPage() {
     }
     setIsCheckingEmail(true)
     try {
-      const result = await authService.checkAvailability(undefined, email)
-      setEmailAvailable(result.emailAvailable)
-      if (result.emailAvailable) {
+      const available = await authService.checkEmailAvailable(email)
+      setEmailAvailable(available)
+      if (available) {
         toast.success('사용 가능한 이메일입니다.')
       } else {
         toast.error('이미 사용 중인 이메일입니다.')

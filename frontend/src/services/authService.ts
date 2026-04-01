@@ -10,79 +10,60 @@ export interface RegisterRequest {
   email: string
   password: string
   nickname: string
+  phone?: string
   gender?: string
   birthYear?: number
 }
 
-export interface AuthResponse {
+export interface AuthUser {
+  id: number
+  loginId: string
+  email: string
+  nickname: string
+  profileImage?: string
+  level: number
+  experience: number
+  wmtiType?: string
+  role: string
+}
+
+export interface AuthTokenResponse {
   accessToken: string
   refreshToken: string
-  user: {
-    id: number
-    loginId: string
-    email: string
-    nickname: string
-    gender?: string
-    birthYear?: number
-    wmtiType?: string
-  }
+  expiresIn: number
+  user: AuthUser
 }
 
 export const authService = {
   login: async (data: LoginRequest) => {
-    const response = await apiClient.post<{ data: AuthResponse }>('/auth/sessions', data)
+    const response = await apiClient.post<{ data: AuthTokenResponse }>('/auth/login', data)
     return response.data.data
   },
 
   register: async (data: RegisterRequest) => {
-    const response = await apiClient.post('/auth/registrations', data)
-    return response.data
-  },
-
-  logout: async () => {
-    const response = await apiClient.delete('/auth/sessions/current')
-    return response.data
+    const response = await apiClient.post<{ data: AuthTokenResponse }>('/auth/signup', data)
+    return response.data.data
   },
 
   refreshToken: async (refreshToken: string) => {
-    const response = await apiClient.post<{ data: AuthResponse }>('/auth/tokens/refresh', {
+    const response = await apiClient.post<{ data: AuthTokenResponse }>('/auth/refresh', {
       refreshToken,
     })
     return response.data.data
   },
 
-  checkAvailability: async (loginId?: string, email?: string) => {
-    const params = new URLSearchParams()
-    if (loginId) params.append('loginId', loginId)
-    if (email) params.append('email', email)
-    const response = await apiClient.get(`/auth/registrations/availability?${params}`)
-    return response.data.data
+  checkLoginIdAvailable: async (loginId: string) => {
+    const response = await apiClient.get<{ data: { available: boolean } }>(`/auth/check-login-id?loginId=${encodeURIComponent(loginId)}`)
+    return response.data.data.available
   },
 
-  requestEmailVerification: async (email: string) => {
-    const response = await apiClient.post('/auth/email-verifications', { email })
-    return response.data
+  checkEmailAvailable: async (email: string) => {
+    const response = await apiClient.get<{ data: { available: boolean } }>(`/auth/check-email?email=${encodeURIComponent(email)}`)
+    return response.data.data.available
   },
 
-  verifyEmail: async (verificationId: string, code: string) => {
-    const response = await apiClient.put(`/auth/email-verifications/${verificationId}`, {
-      code,
-    })
-    return response.data
-  },
-
-  findId: async (name: string, email: string) => {
-    const response = await apiClient.post('/auth/find-id', { name, email })
-    return response.data
-  },
-
-  findPassword: async (loginId: string, email: string) => {
-    const response = await apiClient.post('/auth/find-password', { loginId, email })
-    return response.data
-  },
-
-  resetPassword: async (token: string, newPassword: string) => {
-    const response = await apiClient.post('/auth/reset-password', { token, newPassword })
-    return response.data
+  checkNicknameAvailable: async (nickname: string) => {
+    const response = await apiClient.get<{ data: { available: boolean } }>(`/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`)
+    return response.data.data.available
   },
 }
