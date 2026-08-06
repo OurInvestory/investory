@@ -1,0 +1,77 @@
+# ===========================================
+# Render Blueprint — Investory Backend
+# ===========================================
+# 저장소 루트에 두면 Render 대시보드의 "New > Blueprint" 에서 이 파일을 읽어
+# 서비스를 자동 생성한다. 대시보드에서 손으로 설정하는 것보다 재현성이 좋고,
+# 설정이 코드로 남아 리뷰가 가능하다.
+#
+# ⚠️ Render 에는 Java 네이티브 런타임이 없다. (Node/Python/Ruby/Go/Rust/Elixir/Docker)
+#    그래서 runtime: docker 로 backend/Dockerfile 을 그대로 빌드한다.
+#    README 이전 버전의 "Build Command: ./gradlew build" 방식은 동작하지 않는다.
+#
+# ⚠️ 무료 플랜(plan: free)은 15분간 인바운드 요청이 없으면 spin down 된다.
+#    cron-job.org / UptimeRobot 으로 /api/health 를 10분마다 호출해 깨워 둔다.
+#    (자세한 설정은 README 의 "무료 배포 가이드" 참고)
+
+services:
+  - type: web
+    name: investory-backend
+    runtime: docker
+    plan: free
+    region: singapore          # 한국에서 가장 가까운 리전
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      # --- 최초 1회 배포 시에만 update 로 바꿔 테이블을 생성하고, 이후 validate 로 되돌린다 ---
+      - key: JPA_DDL_AUTO
+        value: validate
+
+      # --- Aiven for MySQL 무료 플랜 접속 정보 (대시보드에서 직접 입력) ---
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+
+      # --- Upstash Redis (선택) ---
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+
+      # --- 보안 ---
+      # generateValue 로 Render 가 랜덤 문자열을 만들어 준다.
+      # 단, 값이 바뀌면 기존 발급 토큰이 전부 무효가 되므로 최초 1회 생성 후 고정한다.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # --- CORS: Vercel 프론트엔드 도메인 (콤마 구분) ---
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+      # --- 시세 시뮬레이터 ---
+      # 무료 플랜은 512MB RAM / 0.1 CPU 다. 5초 주기는 부담스러우므로 30초로 늘린다.
+      - key: SIMULATOR_INTERVAL_MS
+        value: "30000"
+
+      # --- 시드머니 정책 ---
+      # cash 컬럼 도입 이전 가입자에게도 소급 지급한다 (DEPOSIT 이력 기준 멱등).
+      - key: CASH_BACKFILL
+        value: "true"
+
+      # --- JVM: 512MB 컨테이너에서 힙을 과하게 잡지 않도록 조정 ---
+      - key: JAVA_OPTS
+        value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC -Xss512k"
