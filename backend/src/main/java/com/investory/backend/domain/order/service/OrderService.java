@@ -4,10 +4,6 @@ import com.investory.backend.domain.order.dto.OrderRequest;
 import com.investory.backend.domain.order.dto.OrderResponse;
 import com.investory.backend.domain.order.entity.Order;
 import com.investory.backend.domain.order.repository.OrderRepository;
-import com.investory.backend.domain.portfolio.entity.Holding;
-import com.investory.backend.domain.portfolio.repository.HoldingRepository;
-import com.investory.backend.domain.stock.entity.Stock;
-import com.investory.backend.domain.stock.repository.StockRepository;
 import com.investory.backend.domain.user.entity.User;
 import com.investory.backend.domain.user.repository.UserRepository;
 import com.investory.backend.global.exception.BusinessException;
@@ -16,112 +12,81 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
+/**
+ * 주문 유스케이스 진입점.
+ * <p>
+ * 이 클래스의 쓰기 경로({@link #createOrder})는 <b>트랜잭션을 열지 않는다</b>.
+ * 낙관적 락 충돌 재시도는 트랜잭션 바깥에서 수행해야 하며, 실제 트랜잭션은
+ * {@link OrderPlacer} 가 연다. 자세한 근거는 {@code OrderPlacer} 클래스 주석 참고.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final StockRepository stockRepository;
     private final UserRepository userRepository;
-    private final HoldingRepository holdingRepository;
+    private final OrderPlacer orderPlacer;
 
-    @Transactional
+    /**
+     * 주문 시도 횟수 카운터 (최초 시도 + 재시도).
+     * 낙관적 락 vs 비관적 락 비교 실험에서 재시도 횟수를 측정하기 위한 계측용이다.
+     * 운영이라면 Micrometer Counter 가 정석이지만, 의존성 추가 없이 쓰려고 LongAdder 를 택했다.
+     */
+    private final LongAdder attemptCounter = new LongAdder();
+
+    /**
+     * 주문 생성.
+     * <p>
+     * {@code @Retryable} 은 {@link ObjectOptimisticLockingFailureException} 만 잡는다.
+     * 잔액 부족 같은 {@code BusinessException} 은 몇 번을 다시 해도 결과가 같으므로 즉시 전파해야 한다.
+     * <p>
+     * 백오프에 {@code random = true} 를 준 이유: 지연이 고정이면 충돌한 스레드들이 같은 시점에
+     * 동시에 재진입해 또 충돌한다(thundering herd). 지연을 흩뿌려 재충돌 확률을 낮춘다.
+     */
+    @Retryable(
+            retryFor = ObjectOptimisticLockingFailureException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 50, multiplier = 2.0, maxDelay = 300, random = true)
+    )
     public OrderResponse.Detail createOrder(String loginId, OrderRequest.Create request) {
-        User user = getUserByLoginId(loginId);
-        Stock stock = getStockByCode(request.getStockCode());
-
-        // 주문 가격 설정
-        BigDecimal orderPrice = request.getOrderType() == Order.OrderType.MARKET
-                ? stock.getCurrentPrice()
-                : request.getPrice();
-
-        if (orderPrice == null || orderPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_ORDER_PRICE);
-        }
-
-        // 매도 주문인 경우 보유 수량 확인
-        if (request.getSide() == Order.OrderSide.SELL) {
-            Holding holding = holdingRepository.findByUserIdAndStockId(user.getId(), stock.getId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.HOLDING_NOT_FOUND));
-            
-            if (holding.getQuantity() < request.getQuantity()) {
-                throw new BusinessException(ErrorCode.INSUFFICIENT_HOLDING);
-            }
-        }
-
-        // 주문 생성
-        Order order = Order.builder()
-                .user(user)
-                .stock(stock)
-                .orderType(request.getOrderType())
-                .side(request.getSide())
-                .quantity(request.getQuantity())
-                .price(orderPrice)
-                .build();
-
-        Order savedOrder = orderRepository.save(order);
-        log.info("주문 생성: {} - {} {} {} {}주 @{}", 
-                loginId, stock.getCode(), request.getSide(), request.getOrderType(), 
-                request.getQuantity(), orderPrice);
-
-        // 시장가 주문은 즉시 체결 처리 (모의 거래)
-        if (request.getOrderType() == Order.OrderType.MARKET) {
-            executeOrder(savedOrder, orderPrice);
-        }
-
-        return OrderResponse.Detail.from(savedOrder);
+        attemptCounter.increment();
+        return orderPlacer.place(loginId, request);
     }
 
-    @Transactional
-    public void executeOrder(Order order, BigDecimal executionPrice) {
-        order.fill(executionPrice, order.getQuantity());
+    /**
+     * 재시도를 모두 소진했을 때의 최종 처리.
+     * <p>
+     * 저수준 예외인 {@code ObjectOptimisticLockingFailureException} 이 그대로 컨트롤러까지 올라가면
+     * 500 이 나간다. 도메인 예외로 번역해 409 Conflict 로 응답하고 클라이언트가 재시도하도록 유도한다.
+     * {@code @Recover} 메서드는 반환 타입과 (예외를 제외한) 파라미터가 원본과 일치해야 매칭된다.
+     */
+    @Recover
+    public OrderResponse.Detail recoverCreateOrder(ObjectOptimisticLockingFailureException e,
+                                                   String loginId, OrderRequest.Create request) {
+        log.warn("주문 생성 재시도 소진: loginId={}, stockCode={}", loginId, request.getStockCode(), e);
+        throw new BusinessException(ErrorCode.ORDER_CONFLICT);
+    }
 
-        // 포트폴리오 업데이트
-        User user = order.getUser();
-        Stock stock = order.getStock();
+    /** 실험용: {@link #createOrder} 본문이 실행된 총 횟수. */
+    public long getAttemptCount() {
+        return attemptCounter.sum();
+    }
 
-        if (order.getSide() == Order.OrderSide.BUY) {
-            // 매수: 보유 종목 추가/수량 증가
-            Holding holding = holdingRepository.findByUserIdAndStockId(user.getId(), stock.getId())
-                    .orElse(Holding.builder()
-                            .user(user)
-                            .stock(stock)
-                            .quantity(0)
-                            .averagePrice(BigDecimal.ZERO)
-                            .totalInvestment(BigDecimal.ZERO)
-                            .build());
-            
-            holding.addQuantity(order.getQuantity(), executionPrice);
-            holdingRepository.save(holding);
-        } else {
-            // 매도: 보유 수량 감소
-            Holding holding = holdingRepository.findByUserIdAndStockId(user.getId(), stock.getId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.HOLDING_NOT_FOUND));
-            
-            holding.reduceQuantity(order.getQuantity());
-            
-            if (holding.getQuantity() == 0) {
-                holdingRepository.delete(holding);
-            } else {
-                holdingRepository.save(holding);
-            }
-        }
-
-        // 경험치 추가
-        user.addExperience(20);
-        userRepository.save(user);
-
-        log.info("주문 체결: {} - {} {} {}주 @{}", 
-                user.getLoginId(), stock.getCode(), order.getSide(), 
-                order.getQuantity(), executionPrice);
+    /** 실험용: 카운터 초기화. */
+    public void resetAttemptCount() {
+        attemptCounter.reset();
     }
 
     @Transactional
@@ -135,7 +100,7 @@ public class OrderService {
         }
 
         // 취소 가능 여부 확인
-        if (order.getStatus() != Order.OrderStatus.PENDING) {
+        if (!order.isPending()) {
             throw new BusinessException(ErrorCode.ORDER_CANNOT_CANCEL);
         }
 
@@ -175,11 +140,6 @@ public class OrderService {
     private User getUserByLoginId(String loginId) {
         return userRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-    }
-
-    private Stock getStockByCode(String code) {
-        return stockRepository.findByCode(code)
-                .orElseThrow(() -> new BusinessException(ErrorCode.STOCK_NOT_FOUND));
     }
 
     private Order getOrderById(Long orderId) {

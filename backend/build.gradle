@@ -36,6 +36,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
+    // Retry
+    // 낙관적 락(@Version) 충돌 시 트랜잭션 단위 재시도를 선언적으로 처리하기 위해 추가.
+    // spring-retry 는 AOP 프록시로 동작하므로 starter-aop 가 함께 필요하다.
+    // (버전은 Spring Boot BOM 이 관리하므로 명시하지 않는다)
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
     // Database
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.h2database:h2'

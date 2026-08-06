@@ -90,6 +90,38 @@ public class Order extends BaseEntity {
         this.cancelReason = reason;
     }
 
+    /**
+     * 체결 시도가 실패했을 때(잔액 부족 등) 주문을 거부 상태로 종료한다.
+     * <p>
+     * CANCELLED 와 구분하는 이유: CANCELLED 는 사용자의 의사, REJECTED 는 시스템 판단이다.
+     * 이력 분석 시 "내가 취소한 주문"과 "잔액이 모자라 튕긴 주문"을 섞으면 안 된다.
+     */
+    public void reject(String reason) {
+        this.status = OrderStatus.REJECTED;
+        this.cancelledAt = LocalDateTime.now();
+        this.cancelReason = reason;
+    }
+
+    /** 아직 체결을 기다리는 상태인지 여부. */
+    public boolean isPending() {
+        return this.status == OrderStatus.PENDING;
+    }
+
+    /**
+     * 지정가 주문이 현재가 기준으로 체결 조건을 만족하는지 판단한다.
+     * <p>
+     * 매수는 시장이 지정가 이하로 내려와야, 매도는 지정가 이상으로 올라와야 체결된다.
+     * 이 판정 로직을 매처가 아니라 엔티티에 두면 매처 없이도 단위 테스트가 가능하다.
+     */
+    public boolean isMatchable(BigDecimal currentPrice) {
+        if (this.orderType != OrderType.LIMIT || this.price == null || currentPrice == null) {
+            return false;
+        }
+        return this.side == OrderSide.BUY
+                ? currentPrice.compareTo(this.price) <= 0
+                : currentPrice.compareTo(this.price) >= 0;
+    }
+
     public enum OrderType {
         MARKET, LIMIT
     }
