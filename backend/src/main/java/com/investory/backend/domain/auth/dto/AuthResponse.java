@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 public class AuthResponse {
 
     @Getter
@@ -29,6 +31,7 @@ public class AuthResponse {
         private String email;
         private String nickname;
         private String profileImage;
+        private BigDecimal cash;
         private Integer level;
         private Integer experience;
         private String wmtiType;
@@ -41,6 +44,7 @@ public class AuthResponse {
                     .email(user.getEmail())
                     .nickname(user.getNickname())
                     .profileImage(user.getProfileImage())
+                    .cash(user.getCash())
                     .level(user.getLevel())
                     .experience(user.getExperience())
                     .wmtiType(user.getWmtiType())

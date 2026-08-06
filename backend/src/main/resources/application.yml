@@ -78,10 +78,41 @@ spring:
           starttls:
             enable: true
 
+# CORS 설정
+# 배포 시 CORS_ALLOWED_ORIGINS 에 프론트엔드 도메인을 콤마로 구분해 넣는다.
+# 예: https://investory.vercel.app,https://investory.com
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost}
+
 server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
+
+# Investory 도메인 정책 설정
+investory:
+  cash:
+    # 회원가입 시 지급하는 초기 시드머니
+    seed-money: ${SEED_MONEY:10000000}
+    # cash 컬럼 도입 이전에 가입한 유저에게 소급 지급할지 여부 (DEPOSIT 이력 기준 멱등)
+    backfill-existing-users: ${CASH_BACKFILL:true}
+
+  order:
+    # optimistic: @Version + @Retryable (기본)
+    # pessimistic: SELECT ... FOR UPDATE  — 성능 비교 실험용
+    lock-mode: ${ORDER_LOCK_MODE:optimistic}
+
+  stock:
+    simulator:
+      enabled: ${SIMULATOR_ENABLED:true}
+      interval-ms: ${SIMULATOR_INTERVAL_MS:5000}
+      # 틱당 최대 변동률 (0.005 = ±0.5%)
+      volatility: ${SIMULATOR_VOLATILITY:0.005}
+      # 값을 주면 재현 가능한 시세 시퀀스가 만들어진다 (미지정 시 매 실행 랜덤).
+      # 빈 문자열이 Long 으로 바인딩되며 생기는 모호함을 피하려고 기본은 아예 선언하지 않는다.
+      # 필요 시 SIMULATOR_SEED 환경변수 대신 아래 줄의 주석을 해제해 사용한다.
+      # seed: 20250101
+      max-volume-per-tick: 100000
 
 # JWT 설정
 jwt:
@@ -153,7 +184,9 @@ spring:
       on-profile: prod
   jpa:
     hibernate:
-      ddl-auto: validate
+      # 평소에는 validate 로 스키마 드리프트를 잡는다.
+      # 최초 배포 때만 JPA_DDL_AUTO=update 로 한 번 띄워 테이블을 만든 뒤 되돌린다.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: false
 
 logging:

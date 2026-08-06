@@ -2,8 +2,10 @@ package com.investory.backend.domain.auth.service;
 
 import com.investory.backend.domain.auth.dto.AuthRequest;
 import com.investory.backend.domain.auth.dto.AuthResponse;
+import com.investory.backend.domain.user.config.CashProperties;
 import com.investory.backend.domain.user.entity.User;
 import com.investory.backend.domain.user.repository.UserRepository;
+import com.investory.backend.domain.user.service.CashService;
 import com.investory.backend.global.exception.BusinessException;
 import com.investory.backend.global.exception.ErrorCode;
 import com.investory.backend.global.security.JwtTokenProvider;
@@ -25,6 +27,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final CashService cashService;
+    private final CashProperties cashProperties;
 
     @Transactional
     public AuthResponse.Token signUp(AuthRequest.SignUp request) {
@@ -49,7 +53,13 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
-        log.info("새 사용자 가입: {}", savedUser.getLoginId());
+
+        // 시드머니 지급.
+        // save() 이후에 호출하는 이유: CashHistory 가 user_id FK 를 가지므로 식별자가 확정돼야 한다.
+        // 같은 트랜잭션이라 가입이 롤백되면 지급 이력도 함께 사라진다.
+        cashService.deposit(savedUser, cashProperties.getSeedMoney());
+
+        log.info("새 사용자 가입: {} (시드머니 {}원 지급)", savedUser.getLoginId(), cashProperties.getSeedMoney());
 
         // 토큰 생성
         return createTokenResponse(savedUser);

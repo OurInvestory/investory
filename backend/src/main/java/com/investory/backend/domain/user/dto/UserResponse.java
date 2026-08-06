@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class UserResponse {
@@ -21,6 +22,7 @@ public class UserResponse {
         private String nickname;
         private String phone;
         private String profileImage;
+        private BigDecimal cash;
         private Integer level;
         private Integer experience;
         private Integer requiredExp;
@@ -41,6 +43,7 @@ public class UserResponse {
                     .nickname(user.getNickname())
                     .phone(user.getPhone())
                     .profileImage(user.getProfileImage())
+                    .cash(user.getCash())
                     .level(level)
                     .experience(user.getExperience())
                     .requiredExp(requiredExp)
