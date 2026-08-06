@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -50,7 +51,7 @@ public class OrderExecutor {
      * 영속 상태의 주문을 체결한다. (시장가 경로)
      * 호출자의 트랜잭션에 참여한다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     public void execute(Order order, BigDecimal executionPrice) {
         doExecute(order, executionPrice);
     }
@@ -61,10 +62,17 @@ public class OrderExecutor {
      * 엔티티가 아닌 ID를 받는 이유: 매처는 트랜잭션 밖에서 대상 목록을 뽑기 때문에
      * 그때 읽은 엔티티는 준영속(detached) 상태다. 트랜잭션 안에서 다시 읽어야
      * 더티 체킹과 {@code @Version} 검사가 정상 동작한다.
+     * <p>
+     * <b>왜 REQUIRES_NEW 인가</b><br>
+     * 이 메서드의 호출자({@link LimitOrderMatcher})는 {@code AFTER_COMMIT} 리스너 안에서 돈다.
+     * 그 시점에는 시세 갱신 트랜잭션이 이미 커밋됐지만 트랜잭션 동기화는 아직 살아 있어서,
+     * 기본 전파({@code REQUIRED})로 두면 <b>이미 커밋이 끝난 트랜잭션에 참여</b>해 버린다.
+     * 그러면 여기서 바꾼 잔액과 주문 상태가 flush 되지 않고 조용히 사라진다.
+     * 새 트랜잭션을 명시적으로 열어야 실제로 저장되며, 덤으로 주문 1건당 실패가 격리된다.
      *
      * @return 체결 성공 여부 (잔액 부족 등으로 거부되면 false)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean executeById(Long orderId, BigDecimal executionPrice) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
