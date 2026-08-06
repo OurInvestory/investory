@@ -15,13 +15,14 @@ COPY build.gradle settings.gradle ./
 
 # Make gradlew executable and download dependencies
 RUN chmod +x ./gradlew \
-    && ./gradlew dependencies --no-daemon --parallel
+    && ./gradlew dependencies --no-daemon --parallel -Dorg.gradle.jvmargs="-Xmx768m"
 
 # Copy source code
 COPY src ./src
 
 # Build with optimizations
-RUN ./gradlew build -x test --no-daemon --parallel \
+# Render 무료 플랜 등 메모리가 제한된 빌드 환경에서 Gradle JVM 이 OOM 되지 않도록 힙을 고정한다.
+RUN ./gradlew build -x test --no-daemon --parallel -Dorg.gradle.jvmargs="-Xmx768m" \
     && mkdir -p build/extracted \
     && java -Djarmode=layertools -jar build/libs/*.jar extract --destination build/extracted
 

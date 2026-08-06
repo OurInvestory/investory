@@ -33,15 +33,14 @@ services:
         value: validate
 
       # --- Aiven for MySQL 무료 플랜 접속 정보 (대시보드에서 직접 입력) ---
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
+      # Aiven 은 SSL 연결을 강제하는데 application.yml 기본 URL 은 useSSL=false 다.
+      # 환경변수는 yml 보다 우선순위가 높으므로, 전체 URL 을 통째로 주입해 덮어쓴다.
+      # jdbc:mysql://<host>:<port>/defaultdb?useSSL=true&requireSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - key: SPRING_DATASOURCE_URL
         sync: false
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
-        sync: false
-      - key: MYSQL_DATABASE
         sync: false
 
       # --- Upstash Redis (선택) ---

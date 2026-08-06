@@ -1,0 +1,27 @@
+name: Keep-alive
+
+# Render 무료 플랜은 15분간 인바운드 요청이 없으면 서비스를 spin down 한다.
+# SSE 는 서버 → 클라이언트 단방향이라 연결을 열어 둬도 인바운드로 잡히지 않으므로,
+# 외부에서 주기적으로 HTTP 요청을 보내 깨워 둔다.
+#
+# 주기를 10분이 아니라 5분으로 잡은 이유:
+# GitHub Actions 의 schedule 은 정확한 실행 시각을 보장하지 않고 러너 부하에 따라
+# 몇 분씩 밀린다. 10분 주기면 15분 임계값에 여유가 없어 가끔 슬립된다.
+#
+# ⚠️ 저장소에 60일간 활동이 없으면 GitHub 이 스케줄 워크플로를 자동 비활성화한다.
+#    장기 방치 시에는 Actions 탭에서 다시 활성화하거나 cron-job.org 를 쓰는 편이 안전하다.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:          # Actions 탭에서 수동 실행 가능
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        # -f: HTTP 4xx/5xx 를 실패로 처리 (서버가 죽으면 워크플로가 빨갛게 뜬다)
+        # -sS: 진행률은 숨기되 에러는 출력
+        # --max-time 30: 콜드 스타트 중이면 응답이 느릴 수 있어 여유를 준다
+        run: curl -fsS --max-time 30 "${{ secrets.BACKEND_HEALTH_URL }}"
