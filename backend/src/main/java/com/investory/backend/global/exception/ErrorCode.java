@@ -41,10 +41,16 @@ public enum ErrorCode {
     ORDER_CANNOT_CANCEL(HttpStatus.BAD_REQUEST, "O002", "취소할 수 없는 주문입니다."),
     INVALID_ORDER_PRICE(HttpStatus.BAD_REQUEST, "O003", "유효하지 않은 주문 가격입니다."),
     INSUFFICIENT_HOLDING(HttpStatus.BAD_REQUEST, "O004", "보유 수량이 부족합니다."),
+    INSUFFICIENT_CASH(HttpStatus.BAD_REQUEST, "O005", "주문 가능 금액이 부족합니다."),
+    ORDER_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "O006", "이미 처리된 주문입니다."),
+    ORDER_CONFLICT(HttpStatus.CONFLICT, "O007", "주문이 동시에 처리되어 실패했습니다. 잠시 후 다시 시도해 주세요."),
     
     // Holding
     HOLDING_NOT_FOUND(HttpStatus.NOT_FOUND, "H001", "보유 종목을 찾을 수 없습니다."),
     
+    // Cash
+    INVALID_CASH_AMOUNT(HttpStatus.BAD_REQUEST, "CH001", "유효하지 않은 금액입니다."),
+
     // WMTI
     WMTI_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "W001", "투자 성향 분석이 완료되지 않았습니다.");
     
